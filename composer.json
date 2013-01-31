@@ -1,0 +1,22 @@
+{
+    "name": "fclukwebdev/s3hoist",
+    "description": "The easy way to get your existing site assets on to S3",
+    "keywords": ["s3"],
+    "homepage": "https://github.com/fclukwebdev/s3hoist",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Matt Cooper",
+            "email": "matt@matthewcooper.net",
+            "homepage": "http://matthewcooper.net"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "aws/aws-sdk-php": "2.*"
+    },
+    "autoload": {
+        "psr-0": {"S3hoist": "src/"}
+    }
+}
