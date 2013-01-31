@@ -61,11 +61,11 @@ class Process {
     public $exactURL;
     public $localPath;
 
-    public $scriptPath = '/S3hoist/process.php';
-    public $s3SubFolder = '/S3hoist';
+    public $scriptPath = '/s3hoist/process.php';
+    public $s3SubFolder = '/s3hoist';
 
     public $displayObject = true;
-    public $debug = true;
+    public $debug = false;
 
     public $checksToPerform = array(
         'checkS3Exact',
@@ -102,14 +102,14 @@ class Process {
         $this->displayObject = $displayObject;
 
         // Process URL to check for parameters
-        $proccessed = $this->processPath();
+        $this->processPath();
 
         $found = false;
 
         if (!$this->debug) {
 
             foreach($this->checksToPerform as $key => $value) {
-                if($this->$value($proccessed) === true) {
+                if($this->$value() === true) {
                     $found = true ;
                     break;
                 }
@@ -202,7 +202,7 @@ class Process {
 
         }
 
-        if (!$this->debug) {
+        if ($this->debug) {
             echo "exactURL: " . $this->exactURL . "<br>";
         }
 
@@ -220,7 +220,7 @@ class Process {
 
         }
 
-        if (!$this->debug) {
+        if ($this->debug) {
             echo "localPath: " . $this->localPath . "<br>";
         }
 
@@ -242,7 +242,7 @@ class Process {
 
         }
 
-        if (!$this->debug) {
+        if ($this->debug) {
             echo "originalURL: " . $this->originalURL . "<br>";
         }
 
@@ -270,7 +270,7 @@ class Process {
     // Process object
     public function processObject($originalObjectData, $sendOriginaltoS3 = false) {
 
-        $finfo = new finfo(FILEINFO_MIME);
+        $finfo = new \finfo(FILEINFO_MIME);
         $mime = strtolower(explode(';', $finfo->buffer($originalObjectData) . ";")[0]);
         $type = strtolower(explode('/', $finfo->buffer($originalObjectData) . "/")[0]);
 
@@ -390,7 +390,7 @@ class Process {
         $path = ltrim($this->s3SubFolder . $path, '/');
 
         // Instantiate an S3 client
-        $s3 = Aws\Common\Aws::factory(array(
+        $s3 = Aws::factory(array(
             'key'    => $this->awsAccessKey,
             'secret' => $this->awsSecretKey
         ))->get('s3');
@@ -401,7 +401,7 @@ class Process {
                 'Key'         => $path,
                 'ContentType' => $this->originalObjectContentType,
                 'Body'        => $data,
-                'ACL'         => Aws\S3\Enum\CannedAcl::PUBLIC_READ
+                'ACL'         => CannedAcl::PUBLIC_READ
             ));
         } catch (S3Exception $e) {
             echo "The file was not uploaded.\n";
