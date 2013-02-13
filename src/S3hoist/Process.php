@@ -26,12 +26,14 @@ class Process {
                 "pattern" => "[0-9]+"
             ),
         "mw" => array(
-                "name" => "max-width",
-                "pattern" => "[0-9]+"
+                "name" => "maxWidth",
+                "pattern" => "[0-9]+",
+                "default" => 1500
             ),
         "mh" => array(
-                "name" => "max-height",
-                "pattern" => "[0-9]+"
+                "name" => "maxHeight",
+                "pattern" => "[0-9]+",
+                "default" => 1500
             ),
         "q" => array(
                 "name" => "quality",
@@ -80,6 +82,14 @@ class Process {
 
     }
 
+    public function debug($message) {
+
+        if($this->debug) {
+            echo $message . "<br>";
+        }
+
+    }
+
     private function arrayMerge($array1, $array2) {
 
         if (!is_array($array1) or !is_array($array2)) { return $array2; }
@@ -106,29 +116,27 @@ class Process {
 
         $found = false;
 
-        if (!$this->debug) {
-
-            foreach($this->checksToPerform as $key => $value) {
-                if($this->$value() === true) {
-                    $found = true ;
-                    break;
-                }
+        foreach($this->checksToPerform as $key => $value) {
+            if($this->$value() === true) {
+                $found = true ;
+                break;
             }
-
         }
 
         if($found === false) {
-
-            echo "No object found";
-
+            $this->debug('No object found');
+        } else {
+            $this->debug('Object found');
         }
 
     }
 
-    private function processPath() {
+    private function processPath($path = '') {
+
+        if($path === '') {$path = $_SERVER['REQUEST_URI'];}
 
         // Get S3 URL
-        $exactURL = str_replace($this->scriptPath, S3_URL . $this->s3SubFolder, $_SERVER['REQUEST_URI']);
+        $exactURL = str_replace($this->scriptPath, S3_URL . $this->s3SubFolder, $path);
 
         // Get path, filename and extension
         $namePattern = "#([^\/]*)\.([^\.\/]*)\$#i";
@@ -178,13 +186,11 @@ class Process {
         $this->createdS3Path = str_replace(array(S3_URL . $this->s3SubFolder, $exactFilename), array('', $fileWithParameters), $exactURL);
         $this->exactURL = str_replace($exactFilename, $fileWithParameters, $exactURL);
 
-        if($this->debug) {
-            echo $this->originalURL . "<br>";
-            echo $this->localPath . "<br>";
-            echo $this->originalS3Path . "<br>";
-            echo $this->createdS3Path . "<br>";
-            echo $this->exactURL . "<br>";
-        }
+        $this->debug('originalURL: ' . $this->originalURL);
+        $this->debug('localPath: ' . $this->localPath);
+        $this->debug('originalS3Path: ' . $this->originalS3Path);
+        $this->debug('createdS3Path: ' . $this->createdS3Path);
+        $this->debug('exactURL: ' . $this->exactURL);
 
     }
 
@@ -195,15 +201,15 @@ class Process {
 
         if ($exact['code'] === 200) {
 
-            // exact object is found, redirect.
-            header("Location: " . $this->exactURL);
+            $this->debug('<b>Object found at exactURL: ' . $this->exactURL . '</b>');
+
+            if (!$this->debug) {
+                // exact object is found, redirect.
+                header("Location: " . $this->exactURL);
+            }
 
             return true;
 
-        }
-
-        if ($this->debug) {
-            echo "exactURL: " . $this->exactURL . "<br>";
         }
 
         return false;
@@ -214,14 +220,12 @@ class Process {
 
         if(file_exists($this->localPath) && is_file($this->localPath) && is_readable($this->localPath)) {
 
+            $this->debug('<b>Object found at localPath: ' . $this->localPath . '</b>');
+
             $this->processObject(file_get_contents($this->localPath), true);
 
             return true;
 
-        }
-
-        if ($this->debug) {
-            echo "localPath: " . $this->localPath . "<br>";
         }
 
         return false;
@@ -235,15 +239,13 @@ class Process {
 
         if ($original['code'] === 200) {
 
+            $this->debug('<b>Object found at originalURL: ' . $this->originalURL . '</b>');
+
             // original is found, process it into the requested version.
             $this->processObject($original['data']);
 
             return true;
 
-        }
-
-        if ($this->debug) {
-            echo "originalURL: " . $this->originalURL . "<br>";
         }
 
         return false;
@@ -274,6 +276,9 @@ class Process {
         $mime = strtolower(explode(';', $finfo->buffer($originalObjectData) . ";")[0]);
         $type = strtolower(explode('/', $finfo->buffer($originalObjectData) . "/")[0]);
 
+        $this->debug('Type: ' . $type);
+        $this->debug('Mime: ' . $mime);
+
         switch($type)
         {
             case 'image':
@@ -293,6 +298,8 @@ class Process {
 
     public function processImage($originalImageData, $sendOriginaltoS3 = false) {
 
+        $this->debug('Proccessing image');
+
         $this->originalObject = imagecreatefromstring($originalImageData);
         $originalImageProperties = getimagesizefromstring($originalImageData);
         $this->originalImageWidth = intval($originalImageProperties[0]);
@@ -300,9 +307,11 @@ class Process {
         $this->originalImageType = $originalImageProperties[2];
         $this->originalObjectContentType = $originalImageProperties['mime'];
 
+        $this->debug('ImageProperties: <pre>' . print_r($originalImageProperties, true) . '</pre>');
+
         $this->resizeImage();
 
-        if($sendOriginaltoS3) {
+        if($sendOriginaltoS3 && !$this->debug) {
             $this->sendToS3($originalImageData, 'original');
         }
 
@@ -312,11 +321,31 @@ class Process {
 
         $originalAspect = $this->originalImageWidth / $this->originalImageHeight;
 
+        $maxWidth = $this->parameters['maxWidth'];
+        $maxHeight = $this->parameters['maxHeight'];
+        $desiredMaxWidth = $maxWidth === NULL ? $this->originalImageWidth : $maxWidth;
+        $desiredMaxHeight = $maxHeight === NULL ? $this->originalImageHeight : $maxHeight;
+
         $width = $this->parameters['width'];
         $height = $this->parameters['height'];
         $desiredWidth = $width === NULL ? ($height === NULL ? $this->originalImageWidth : $this->originalImageWidth * $height / $this->originalImageHeight) : $width;
         $desiredHeight = $height === NULL ? ($width === NULL ? $this->originalImageHeight : $this->originalImageHeight * $width / $this->originalImageWidth) : $height;
         $desiredAspect = $desiredWidth / $desiredHeight;
+
+        // Adjust width if larger than max width - maintain aspect ratio
+        if($desiredWidth > $desiredMaxWidth) {
+            $desiredWidth = $desiredMaxWidth;
+            $desiredHeight = $desiredWidth / $desiredAspect;
+        }
+
+        // Adjust width if larger than max width - maintain aspect ratio
+        if($desiredHeight > $desiredMaxHeight) {
+            $desiredHeight = $desiredMaxHeight;
+            $desiredWidth = $desiredHeight * $desiredAspect;
+        }
+
+        $this->debug($desiredWidth);
+        $this->debug($desiredHeight);
 
         if ($originalAspect >= $desiredAspect) {
             // If image is wider than thumbnail (in aspect ratio sense)
@@ -329,6 +358,10 @@ class Process {
         }
 
         $this->createdObject = imagecreatetruecolor($desiredWidth, $desiredHeight);
+
+        imagealphablending($this->createdObject, false);
+        imagesavealpha($this->createdObject, true);
+
         imagecopyresampled(
             $this->createdObject,
             $this->originalObject,
@@ -349,7 +382,7 @@ class Process {
                     imagegif($this->createdObject);
                     break;
                 case IMAGETYPE_PNG:
-                    imagepng($this->createdObject, NULL, $this->parameters['quality']);
+                    imagepng($this->createdObject, NULL, round((100.01 - $this->parameters['quality']) / 10));
                     break;
                 default: //IMAGETYPE_JPEG
                     imagejpeg($this->createdObject, NULL, $this->parameters['quality']);
@@ -370,9 +403,13 @@ class Process {
 
     public function outputObject() {
 
-        header('Content-type: ' . $this->originalObjectContentType);
+        if(!$this->debug) {
 
-        echo $this->createdObjectData;
+            header('Content-type: ' . $this->originalObjectContentType);
+
+            echo $this->createdObjectData;
+
+        }
 
     }
 
@@ -389,22 +426,27 @@ class Process {
 
         $path = ltrim($this->s3SubFolder . $path, '/');
 
-        // Instantiate an S3 client
-        $s3 = Aws::factory(array(
-            'key'    => $this->awsAccessKey,
-            'secret' => $this->awsSecretKey
-        ))->get('s3');
+        $this->debug('Attempting to write the following to S3 at path: ' . $path);
+        $this->debug($data);
 
-        try {
-            $s3->putObject(array(
-                'Bucket'      => BUCKET,
-                'Key'         => $path,
-                'ContentType' => $this->originalObjectContentType,
-                'Body'        => $data,
-                'ACL'         => CannedAcl::PUBLIC_READ
-            ));
-        } catch (S3Exception $e) {
-            echo "The file was not uploaded.\n";
+        if(!$this->debug) {
+            // Instantiate an S3 client
+            $s3 = Aws::factory(array(
+                'key'    => $this->awsAccessKey,
+                'secret' => $this->awsSecretKey
+            ))->get('s3');
+
+            try {
+                $s3->putObject(array(
+                    'Bucket'      => BUCKET,
+                    'Key'         => $path,
+                    'ContentType' => $this->originalObjectContentType,
+                    'Body'        => $data,
+                    'ACL'         => CannedAcl::PUBLIC_READ
+                ));
+            } catch (S3Exception $e) {
+                $this->debug('The file was not uploaded');
+            }
         }
 
     }
