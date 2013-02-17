@@ -8,11 +8,9 @@ This is very much still a work in progress... but actively in development.
 Setup
 -----
 
-<ol>
-  <li>`git clone https://github.com/fclukwebdev/s3hoist.git` to the web root of your website.</li>
-  <li>Edit the settings in process.php to include your S3 and website details.</li>
-  <li>Setup rewrites to redirect the assets you wish to move to s3.</li>
-</ol>
+1. `git clone https://github.com/fclukwebdev/s3hoist.git` to the web root of your website.
+2. Edit the settings in process.php to include your S3 and website details.
+3. Setup rewrites to redirect the assets you wish to move to s3.
 
 API
 ---
