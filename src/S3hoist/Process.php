@@ -326,26 +326,56 @@ class Process {
         $desiredMaxWidth = $maxWidth === NULL ? $this->originalImageWidth : $maxWidth;
         $desiredMaxHeight = $maxHeight === NULL ? $this->originalImageHeight : $maxHeight;
 
+        $hardWidth = false;
+        $hardHeight = false;
+
         $width = $this->parameters['width'];
         $height = $this->parameters['height'];
-        $desiredWidth = $width === NULL ? ($height === NULL ? $this->originalImageWidth : $this->originalImageWidth * $height / $this->originalImageHeight) : $width;
-        $desiredHeight = $height === NULL ? ($width === NULL ? $this->originalImageHeight : $this->originalImageHeight * $width / $this->originalImageWidth) : $height;
+
+        if($width === NULL) {
+            if($height === NULL) {
+                $desiredWidth = $this->originalImageWidth;
+            } else {
+                $desiredWidth = $this->originalImageWidth * $height / $this->originalImageHeight;
+            }
+        } else {
+            $desiredWidth = $width;
+            $hardWidth = true;
+        }
+
+        if($height === NULL) {
+            if($width === NULL) {
+                $desiredHeight = $this->originalImageHeight;
+            } else {
+                $desiredHeight = $this->originalImageHeight * $width / $this->originalImageWidth;
+            }
+        } else {
+            $desiredHeight = $height;
+            $hardHeight = true;
+        }
+
         $desiredAspect = $desiredWidth / $desiredHeight;
 
         // Adjust width if larger than max width - maintain aspect ratio
         if($desiredWidth > $desiredMaxWidth) {
             $desiredWidth = $desiredMaxWidth;
-            $desiredHeight = $desiredWidth / $desiredAspect;
+            if($hardHeight === false) {
+                $desiredHeight = $desiredWidth / $desiredAspect;
+            }
         }
 
-        // Adjust width if larger than max width - maintain aspect ratio
+        // Adjust width if larger than max height - maintain aspect ratio
         if($desiredHeight > $desiredMaxHeight) {
             $desiredHeight = $desiredMaxHeight;
-            $desiredWidth = $desiredHeight * $desiredAspect;
+            if($hardWidth === false) {
+                $desiredWidth = $desiredHeight * $desiredAspect;
+            }
         }
 
-        $this->debug($desiredWidth);
-        $this->debug($desiredHeight);
+        $desiredAspect = $desiredWidth / $desiredHeight;
+
+        $this->debug('Requested width: ' . $desiredWidth);
+        $this->debug('Requested height: ' . $desiredHeight);
 
         if ($originalAspect >= $desiredAspect) {
             // If image is wider than thumbnail (in aspect ratio sense)
@@ -429,7 +459,7 @@ class Process {
         $this->debug('Attempting to write the following to S3 at path: ' . $path);
         $this->debug($data);
 
-        if(!$this->debug) {
+        if(!$this->debug && 1) {
             // Instantiate an S3 client
             $s3 = Aws::factory(array(
                 'key'    => $this->awsAccessKey,
