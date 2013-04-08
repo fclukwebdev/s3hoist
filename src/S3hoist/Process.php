@@ -273,8 +273,10 @@ class Process {
     public function processObject($originalObjectData, $sendOriginaltoS3 = false) {
 
         $finfo = new \finfo(FILEINFO_MIME);
-        $mime = strtolower(explode(';', $finfo->buffer($originalObjectData) . ";")[0]);
-        $type = strtolower(explode('/', $finfo->buffer($originalObjectData) . "/")[0]);
+        $temp = explode(';', $finfo->buffer($originalObjectData) . ";");
+        $mime = strtolower($temp[0]);
+        $temp = explode('/', $finfo->buffer($originalObjectData) . "/");
+        $type = strtolower($temp[0]);
 
         $this->debug('Type: ' . $type);
         $this->debug('Mime: ' . $mime);
