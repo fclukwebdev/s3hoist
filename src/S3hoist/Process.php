@@ -100,6 +100,11 @@ class Process {
 
     }
 
+    private function getimagesizefromstr($str) {
+        $uri = 'data://application/octet-stream;base64,' . base64_encode($str);
+        return getimagesize($uri);
+    }
+
     public function setParameters($parameters) {
 
         $this->parametersAvaliable = $this->arrayMerge($this->parametersAvaliable, $parameters);
@@ -303,7 +308,7 @@ class Process {
         $this->debug('Proccessing image');
 
         $this->originalObject = imagecreatefromstring($originalImageData);
-        $originalImageProperties = getimagesizefromstring($originalImageData);
+        $originalImageProperties = $this->getimagesizefromstr($originalImageData);
         $this->originalImageWidth = intval($originalImageProperties[0]);
         $this->originalImageHeight = intval($originalImageProperties[1]);
         $this->originalImageType = $originalImageProperties[2];
