@@ -459,7 +459,7 @@ class Process {
         $this->debug('Attempting to write the following to S3 at path: ' . $path);
         $this->debug($data);
 
-        if(!$this->debug && 1) {
+        if(!$this->debug) {
             // Instantiate an S3 client
             $s3 = Aws::factory(array(
                 'key'    => $this->awsAccessKey,
