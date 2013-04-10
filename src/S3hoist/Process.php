@@ -38,7 +38,8 @@ class Process {
         "q" => array(
                 "name" => "quality",
                 "pattern" => "[0-9]+",
-                "default" => 80
+                "default" => 80,
+                "default_in_name" => true
             )
     );
 
@@ -138,7 +139,7 @@ class Process {
 
     private function processPath($path = '') {
 
-        if($path === '') {$path = $_SERVER['REQUEST_URI'];}
+        if($path === '') {$path = rtrim(str_replace('?&', '?', preg_replace('/&?debug=[^&]*/', '', $_SERVER['REQUEST_URI'])), '?');}
 
         // Get S3 URL
         $exactURL = str_replace($this->scriptPath, S3_URL . $this->s3SubFolder, $path);
@@ -157,6 +158,7 @@ class Process {
 
             // Gather default parameters
             $default = isset($value['default']) ? $value['default'] : NULL;
+            $default_in_name = isset($value['default_in_name']) ? $value['default_in_name'] : false;
             $this->parameters[$this->parametersAvaliable[$key]['name']] = $default;
 
             // Gather any parameters found in the file name
@@ -176,7 +178,7 @@ class Process {
             $exactURL = preg_replace($paramPattern, '', $exactURL);
 
             // Set the parameter string
-            if($this->parameters[$this->parametersAvaliable[$key]['name']] !== NULL && $this->parameters[$this->parametersAvaliable[$key]['name']] !== $default) {
+            if($this->parameters[$this->parametersAvaliable[$key]['name']] !== NULL && ($this->parameters[$this->parametersAvaliable[$key]['name']] !== $default) || $default_in_name === true) {
                 $parameterString .= "_" . $key . $this->parameters[$this->parametersAvaliable[$key]['name']];
             }
 
@@ -191,10 +193,11 @@ class Process {
         $this->createdS3Path = str_replace(array(S3_URL . $this->s3SubFolder, $exactFilename), array('', $fileWithParameters), $exactURL);
         $this->exactURL = str_replace($exactFilename, $fileWithParameters, $exactURL);
 
-        $this->debug('originalURL: ' . $this->originalURL);
-        $this->debug('localPath: ' . $this->localPath);
         $this->debug('originalS3Path: ' . $this->originalS3Path);
         $this->debug('createdS3Path: ' . $this->createdS3Path);
+
+        $this->debug('originalURL: ' . $this->originalURL);
+        $this->debug('localPath: ' . $this->localPath);
         $this->debug('exactURL: ' . $this->exactURL);
 
     }
